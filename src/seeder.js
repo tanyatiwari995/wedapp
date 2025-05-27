@@ -29,7 +29,7 @@ async function main() {
 
     const admin = await Admin.create(data);
 
-    console.log("Admin a/c created");
+    console.log("Admin a/c created");;
 
     process.exit(1)
     
