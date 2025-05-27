@@ -17,7 +17,7 @@ import {
 import { Admin } from "../models/Admin.js";
 
 const router = express.Router();
-router.post("/register", createAdminAccount)
+router.post("/register", createAdminAccount);
 router.post("/login", login);
 router.post("/request-otp", requestOtp);
 router.post("/verify-otp", verifyOtp);
@@ -28,6 +28,7 @@ router.get("/dashboard", verifyToken, adminCheck, (req, res) => {
     .status(200)
     .json({ message: "Welcome to Admin Dashboard", admin: req.user });
 });
+
 router.get("/check-auth", verifyToken, adminCheck, (req, res) => {
   try {
     Admin.findById(req.user.id)

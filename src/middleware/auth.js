@@ -70,11 +70,16 @@ export const verifyToken = async (req, res, next) => {
 // Middleware: Verify reset token
 export const verifyResetToken = (req, res, next) => {
   const token = req.cookies?.resetToken;
+  console.log(token);
+  
   if (!token) return res.status(401).json({ message: "No reset token provided" });
 
   try {
     const decoded = jwt.verify(token, JWT_SECRET);
+    console.log(decoded);
     req.otpId = decoded.otpId;
+    console.log();
+    
     next();
   } catch (error) {
     console.error("Reset token verification failed:", error.message);

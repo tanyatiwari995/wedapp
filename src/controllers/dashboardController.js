@@ -1046,6 +1046,7 @@ export const getVendorRequestById = async (req, res) => {
   try {
     const { vendorId } = req.params;
     console.log(req.params);
+
     const user = await User.findById(vendorId)
       .select("username full_name phone vendorRequest")
       .lean();
@@ -1339,7 +1340,9 @@ export const createBooking = async (req, res) => {
     quantity = 1,
     end_date,
   } = req.body;
-
+    
+   console.log(req.body);
+   
   try {
     if (!service_id && !card_template_id) {
       return res

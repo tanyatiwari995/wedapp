@@ -24,9 +24,11 @@ export const uploadBrandIcon = async (imageData) => {
       throw new Error("Image must be in JPEG, JPG, or PNG format")
     }
 
-    const base64Image = `data:${imageData.mimetype};base64,${imageData.buffer.toString("base64")}`
-    const result = await cloudinary.uploader.upload(base64Image, {
-      folder: "eazywed/brand_icons",
+    // const base64Image = `data:${imageData.mimetype};base64,${imageData.buffer.toString("base64")}`
+    const base64Data = imageData.buffer.toString('base64');
+  const dataURI = `data:${imageData.mimetype};base64,${base64Data}`;
+    const result = await cloudinary.uploader.upload(dataURI, {
+      folder: "Frontend/brand_icons",
       resource_type: "image",
     })
 

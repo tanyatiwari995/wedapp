@@ -5,14 +5,15 @@ import { sendOTP } from "../utils/twilio.js";
 import { generateToken, generateResetToken } from "../middleware/auth.js";
 import bcrypt from "bcrypt";
 import { NODE_ENV } from "../config/env.js";
-
 // Create Admin Account
 export const createAdminAccount = async (req, res) => {
   const { phone, password, username } = req.body;
   console.log(req.body);
 
   if ([phone, password, username].some((field) => field === "")) {
-    return res.status(400).json({ message: "Username/phone and password are required" });
+    return res
+      .status(400)
+      .json({ message: "Username/phone and password are required" });
   }
 
   try {
@@ -46,27 +47,27 @@ export const createAdminAccount = async (req, res) => {
   }
 };
 
-// Login Admin
 export const login = async (req, res) => {
   const { identifier, password } = req.body;
   console.log(req.body);
 
-  if (!identifier || !password) {
-    return res.status(400).json({ message: "Username/phone and password are required" });
-  }
+  if (!identifier || !password)
+    return res
+      .status(400)
+      .json({ message: "Username/phone and password are required" });
 
   try {
     const admin = await Admin.findOne({
       $or: [{ username: identifier }, { phone: identifier }],
     });
-
     if (!admin) return res.status(404).json({ message: "Admin not found" });
 
     const isMatch = await bcrypt.compare(password, admin.password);
-    if (!isMatch) return res.status(401).json({ message: "Invalid credentials" });
+    if (!isMatch)
+      return res.status(401).json({ message: "Invalid credentials" });
 
-    const token = generateToken(admin._id, "admin");
-    return res
+    const token = await generateToken(admin._id, "admin");
+    res
       .cookie("token", token, {
         httpOnly: true,
         secure: NODE_ENV === "production",
@@ -85,14 +86,13 @@ export const login = async (req, res) => {
       });
   } catch (error) {
     console.error("Admin login error:", error);
-    return res.status(500).json({ message: "Server error" });
+    res.status(500).json({ message: "Server error" });
   }
 };
 
-// Request OTP
 export const requestOtp = async (req, res) => {
   const { phone } = req.body;
-  console.log(req.body);
+  // console.log(req.body);
 
   if (!phone) return res.status(400).json({ message: "Phone is required" });
 
@@ -102,9 +102,10 @@ export const requestOtp = async (req, res) => {
 
     const otpRecord = await OTP.findOne({ phone, role: "admin" });
     const now = new Date();
-
     if (otpRecord && otpRecord.requestCount >= 5) {
-      const cooldownEnd = new Date(otpRecord.lastRequestTime.getTime() + 15 * 60 * 1000);
+      const cooldownEnd = new Date(
+        otpRecord.lastRequestTime.getTime() + 15 * 60 * 1000
+      );
       if (now < cooldownEnd) {
         const waitTime = Math.ceil((cooldownEnd - now) / 60000);
         return res.status(429).json({
@@ -116,7 +117,10 @@ export const requestOtp = async (req, res) => {
     }
 
     const otp = Math.floor(100000 + Math.random() * 900000).toString();
+    console.log(otp);
+
     const expiresAt = new Date(Date.now() + 10 * 60 * 1000);
+    console.log(expiresAt);
 
     await OTP.findOneAndUpdate(
       { phone, role: "admin" },
@@ -131,25 +135,22 @@ export const requestOtp = async (req, res) => {
     );
 
     await sendOTP(phone, otp);
-    return res.status(200).json({ message: "OTP sent successfully" });
+    res.status(200).json({ message: "OTP sent successfully" });
   } catch (error) {
     console.error("Admin OTP request error:", error);
-    return res.status(500).json({ message: "Server error" });
+    res.status(500).json({ message: "Server error" });
   }
 };
 
-// Verify OTP
 export const verifyOtp = async (req, res) => {
   const { phone, otp } = req.body;
   console.log(req.body);
 
-  if (!phone || !otp) {
+  if (!phone || !otp)
     return res.status(400).json({ message: "Phone and OTP are required" });
-  }
 
   try {
     const otpRecord = await OTP.findOne({ phone, otpCode: otp, role: "admin" });
-
     if (!otpRecord || new Date() > otpRecord.expiresAt) {
       return res.status(400).json({ message: "Invalid or expired OTP" });
     }
@@ -160,10 +161,15 @@ export const verifyOtp = async (req, res) => {
 
     otpRecord.verified = true;
     await otpRecord.save();
+   
+
+    //  const otpv =OTP.findByIdAndUpdate(otpRecord._id,{verified:true},{
+    //   new:true
+    //   })
+    //   console.log(otpv);
 
     const token = generateResetToken(otpRecord._id, "10m");
-
-    return res
+    res
       .cookie("resetToken", token, {
         httpOnly: true,
         secure: NODE_ENV === "production",
@@ -174,24 +180,30 @@ export const verifyOtp = async (req, res) => {
       .json({ message: "OTP verified successfully" });
   } catch (error) {
     console.error("Admin OTP verify error:", error);
-    return res.status(500).json({ message: "Server error" });
+    res.status(500).json({ message: "Server error" });
   }
 };
 
-// Reset Password
 export const resetPassword = async (req, res) => {
   const { newPassword } = req.body;
   console.log(req.body);
 
   if (!newPassword || newPassword.length < 8) {
-    return res.status(400).json({ message: "Password must be at least 8 characters" });
+    return res
+      .status(400)
+      .json({ message: "Password must be at least 8 characters" });
   }
 
   try {
     const { otpId } = req;
+    // console.log(req);
+
     const otpRecord = await OTP.findById(otpId);
+    console.log(otpRecord);
 
     if (!otpRecord || !otpRecord.verified || otpRecord.role !== "admin") {
+      console.log(otpRecord, otpRecord.verified, otpRecord.role);
+
       return res.status(400).json({ message: "Invalid or unverified OTP" });
     }
 
@@ -201,66 +213,72 @@ export const resetPassword = async (req, res) => {
     admin.password = await bcrypt.hash(newPassword, 10);
     await admin.save();
 
-    await OTP.deleteOne({ _id: otpRecord._id });
-
-    return res
+    res
       .clearCookie("resetToken")
       .status(200)
       .json({ message: "Password reset successfully" });
+    await OTP.deleteOne({ _id: otpRecord._id });
+    console.log(otpRecord._id);
   } catch (error) {
     console.error("Admin reset password error:", error);
-    return res.status(500).json({ message: "Server error" });
+    res.status(500).json({ message: "Server error" });
   }
 };
 
-// Check Reset Token
 export const checkResetToken = async (req, res) => {
   try {
     const { otpId } = req;
+    console.log(req);
+    console.log(otpId);
+
     const otpRecord = await OTP.findById(otpId);
+    console.log(otpRecord);
 
     if (!otpRecord || !otpRecord.verified || otpRecord.role !== "admin") {
-      return res.status(401).json({ message: "Invalid or unverified reset token" });
-    }
+      console.log(otpRecord, otpRecord.verified, otpRecord.role);
 
-    return res.status(200).json({ message: "Token valid" });
+      return res
+        .status(401)
+        .json({ message: "Invalid or unverified reset token" });
+    }
+    res.status(200).json({ message: "Token valid" });
   } catch (error) {
     console.error("Check reset token error:", error);
-    return res.status(500).json({ message: "Server error" });
+    res.status(500).json({ message: "Server error" });
   }
 };
 
-// Approve Vendor
 export const approveVendor = async (req, res) => {
   const { userId } = req.body;
   console.log(req.body);
 
   try {
     const user = await User.findById(userId);
-    if (!user) return res.status(404).json({ message: "User not found" });
+    console.log(user);
 
+    if (!user) return res.status(404).json({ message: "User not found" });
     if (user.vendorRequest.status !== "pending") {
       return res.status(400).json({ message: "No pending vendor request" });
     }
 
     user.role = "vendor";
     user.vendorRequest.status = "approved";
-    user.vendorDetails = { ...user.vendorRequest };
-
-    delete user.vendorRequest.rejectionCount;
+    user.vendorDetails = { ...user.vendorRequest }; 
+    delete user.vendorRequest.rejectionCount; 
     delete user.vendorRequest.lastRejectionTime;
-
     await user.save();
 
-    await sendOTP(user.phone, "Congratulations! You have been registered as a vendor.");
-    return res.status(200).json({ message: "Vendor approved successfully" });
+    await sendOTP(
+      user.phone,
+      "Congratulations! You have been registered as a vendor."
+    );
+    res.status(200).json({ message: "Vendor approved successfully" });
   } catch (error) {
     console.error("Vendor approval error:", error);
-    return res.status(500).json({ message: "Server error" });
+    res.status(500).json({ message: "Server error" });
   }
 };
 
-// Reject Vendor
 export const rejectVendor = async (req, res) => {
   const { userId } = req.body;
   console.log(req.body);
@@ -268,21 +286,23 @@ export const rejectVendor = async (req, res) => {
   try {
     const user = await User.findById(userId);
     if (!user) return res.status(404).json({ message: "User not found" });
-
     if (user.vendorRequest.status !== "pending") {
       return res.status(400).json({ message: "No pending vendor request" });
     }
 
     user.vendorRequest.status = "canApply";
-    user.vendorRequest.rejectionCount = (user.vendorRequest.rejectionCount || 0) + 1;
+    user.vendorRequest.rejectionCount =
+      (user.vendorRequest.rejectionCount || 0) + 1;
     user.vendorRequest.lastRejectionTime = new Date();
-
     await user.save();
 
-    await sendOTP(user.phone, "Your request was rejected. Please try again with correct details.");
-    return res.status(200).json({ message: "Vendor request rejected" });
+    await sendOTP(
+      user.phone,
+      "Your request does not meet the standards. Please try again with correct details."
+    );
+    res.status(200).json({ message: "Vendor request rejected" });
   } catch (error) {
     console.error("Vendor rejection error:", error);
-    return res.status(500).json({ message: "Server error" });
+    res.status(500).json({ message: "Server error" });
   }
 };

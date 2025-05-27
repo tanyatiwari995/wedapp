@@ -4,8 +4,11 @@ import Service from "../models/Service.js";
 import CardTemplate from "../models/CardTemplate.js";
 import Recommendation from "../models/Recommendation.js";
 import Review from "../models/Review.js";
-import ContactMessage from "../models/ContactMessage.js"; 
-import { getPersonalizedRecommendations, getPopularRecommendations } from "../utils/recommendationEngine.js";
+import ContactMessage from "../models/ContactMessage.js";
+import {
+  getPersonalizedRecommendations,
+  getPopularRecommendations,
+} from "../utils/recommendationEngine.js";
 import { generateWhatsAppLink } from "../utils/whatsapp.js";
 import { sendOTP } from "../utils/twilio.js";
 
@@ -59,7 +62,9 @@ export const getSlidersByCategory = async (req, res) => {
     const { city } = req.query;
 
     if (!category) {
-      return res.status(400).json({ message: "Category parameter is required" });
+      return res
+        .status(400)
+        .json({ message: "Category parameter is required" });
     }
 
     let services = [];
@@ -75,20 +80,26 @@ export const getSlidersByCategory = async (req, res) => {
       services = recommendations.map((rec) => rec.service_id).filter(Boolean);
       if (city) services = services.filter((s) => s.city === city);
     } else if (category === "Discounts") {
-      services = await Service.find({ ...baseQuery, discount: { $gt: 0 } })
-        .limit(10);
+      services = await Service.find({
+        ...baseQuery,
+        discount: { $gt: 0 },
+      }).limit(10);
     } else if (category === "Wedding Cards") {
-      cards = await CardTemplate.find(baseQuery)
-        .limit(10);
+      cards = await CardTemplate.find(baseQuery).limit(10);
     } else {
-      services = await Service.find({ ...baseQuery, category, discount: { $in: [0, null] } })
-        .limit(10);
+      services = await Service.find({
+        ...baseQuery,
+        category,
+        discount: { $in: [0, null] },
+      }).limit(10);
     }
 
     const formattedServices = services.map(formatService);
     const formattedCards = cards.map(formatCard);
 
-    return res.status(200).json(formatResponse([...formattedServices, ...formattedCards]));
+    return res
+      .status(200)
+      .json(formatResponse([...formattedServices, ...formattedCards]));
   } catch (error) {
     return handleError(res, error, "Slider fetch error");
   }
@@ -178,17 +189,19 @@ export const getServicesByCategory = async (req, res) => {
     const { category } = req.params;
     console.log(req.params);
 
-    const { 
-      page = 1, 
-      limit = 10, 
-      city, 
-      budgetMin, 
-      budgetMax, 
-      refundPolicy 
+    const {
+      page = 1,
+      limit = 10,
+      city,
+      budgetMin,
+      budgetMax,
+      refundPolicy,
     } = req.query;
 
     if (!category) {
-      return res.status(400).json({ message: "Category parameter is required" });
+      return res
+        .status(400)
+        .json({ message: "Category parameter is required" });
     }
 
     const skip = (page - 1) * parseInt(limit);
@@ -204,8 +217,10 @@ export const getServicesByCategory = async (req, res) => {
     }
     if (budgetMin || budgetMax) {
       serviceQuery["pricing_packages.price"] = {};
-      if (budgetMin) serviceQuery["pricing_packages.price"].$gte = Number(budgetMin);
-      if (budgetMax) serviceQuery["pricing_packages.price"].$lte = Number(budgetMax);
+      if (budgetMin)
+        serviceQuery["pricing_packages.price"].$gte = Number(budgetMin);
+      if (budgetMax)
+        serviceQuery["pricing_packages.price"].$lte = Number(budgetMax);
       cardQuery.price_per_card = {};
       if (budgetMin) cardQuery.price_per_card.$gte = Number(budgetMin);
       if (budgetMax) cardQuery.price_per_card.$lte = Number(budgetMax);
@@ -252,10 +267,12 @@ export const getDiscountedServicesByCategory = async (req, res) => {
   try {
     const { category } = req.params;
     const { page = 1, limit = 10 } = req.query;
-     console.log(req.params,req.query);
-     
+    console.log(req.params, req.query);
+
     if (!category) {
-      return res.status(400).json({ message: "Category parameter is required" });
+      return res
+        .status(400)
+        .json({ message: "Category parameter is required" });
     }
 
     const skip = (page - 1) * parseInt(limit);
@@ -263,9 +280,7 @@ export const getDiscountedServicesByCategory = async (req, res) => {
 
     const [total, services] = await Promise.all([
       Service.countDocuments(query),
-      Service.find(query)
-        .skip(skip)
-        .limit(parseInt(limit)),
+      Service.find(query).skip(skip).limit(parseInt(limit)),
     ]);
 
     const formattedServices = services.map(formatService);
@@ -285,14 +300,17 @@ export const getDiscountedServicesByCategory = async (req, res) => {
 export const getServiceDetails = async (req, res) => {
   try {
     const { id } = req.params;
-     console.log(req.params);
-     
+    console.log(req.params);
+
     if (!mongoose.Types.ObjectId.isValid(id)) {
       return res.status(400).json({ message: "Invalid service ID" });
     }
 
     const service = await Service.findById(id)
-      .populate("vendor_id", "phone vendorDetails.whatsapp_number full_name vendorDetails.brand_name")
+      .populate(
+        "vendor_id",
+        "phone vendorDetails.whatsapp_number full_name vendorDetails.brand_name"
+      )
       .lean();
 
     if (!service) {
@@ -309,16 +327,23 @@ export const getServiceDetails = async (req, res) => {
 
     const avgRating =
       reviews.length > 0
-        ? (reviews.reduce((sum, r) => sum + r.stars, 0) / reviews.length).toFixed(1)
+        ? (
+            reviews.reduce((sum, r) => sum + r.stars, 0) / reviews.length
+          ).toFixed(1)
         : 0;
 
-    const vendorPhone = service.vendor_id?.vendorDetails?.whatsapp_number || service.vendor_id?.phone;
+    const vendorPhone =
+      service.vendor_id?.vendorDetails?.whatsapp_number ||
+      service.vendor_id?.phone;
 
     const serviceData = {
       id: service._id,
       name: service.name,
       category: service.category,
-      vendorName: service.vendor_id?.vendorDetails?.brand_name || service.vendor_id?.full_name || "Unknown Vendor",
+      vendorName:
+        service.vendor_id?.vendorDetails?.brand_name ||
+        service.vendor_id?.full_name ||
+        "Unknown Vendor",
       vendorId: service.vendor_id?._id,
       vendorPhone,
       priceRange: service.price_range,
@@ -327,7 +352,10 @@ export const getServiceDetails = async (req, res) => {
       photos: service.photos || [],
       discount: service.discount || 0,
       discountExpiry: service.discount_expiry || null,
-      availability: service.availability || { working_hours: "", working_days: [] },
+      availability: service.availability || {
+        working_hours: "",
+        working_days: [],
+      },
       pricingPackages: service.pricing_packages || [],
       details: service.details || {},
       city: service.city,
@@ -341,7 +369,7 @@ export const getServiceDetails = async (req, res) => {
         createdAt: r.createdAt,
       })),
       isRental: ["Car Rental", "Bridal Wear"].includes(service.category),
-      location_map: service.location_map || '',
+      location_map: service.location_map || "",
     };
 
     return res.status(200).json(serviceData);
@@ -354,8 +382,7 @@ export const checkServiceAvailability = async (req, res) => {
   try {
     const { id } = req.params;
     const { date, packageId, quantity = 1, startDate, endDate } = req.body;
-     console.log(req.params,req.body);
-     
+    console.log(req.params, req.body);
 
     if (!mongoose.Types.ObjectId.isValid(id)) {
       return res.status(400).json({ message: "Invalid service ID" });
@@ -376,18 +403,26 @@ export const checkServiceAvailability = async (req, res) => {
     const isRental = ["Car Rental", "Bridal Wear"].includes(service.category);
 
     if (isRental && (!startDate || !endDate)) {
-      return res.status(400).json({ message: "Start date and end date are required for rental services" });
+      return res
+        .status(400)
+        .json({
+          message: "Start date and end date are required for rental services",
+        });
     }
 
     if (!isRental && !date) {
-      return res.status(400).json({ message: "Date is required for non-rental services" });
+      return res
+        .status(400)
+        .json({ message: "Date is required for non-rental services" });
     }
 
     if (quantity < 1) {
       return res.status(400).json({ message: "Quantity must be at least 1" });
     }
 
-    const vendorPhone = service.vendor_id?.vendorDetails?.whatsapp_number || service.vendor_id?.phone;
+    const vendorPhone =
+      service.vendor_id?.vendorDetails?.whatsapp_number ||
+      service.vendor_id?.phone;
 
     if (!vendorPhone) {
       return res.status(400).json({ message: "Vendor contact not available" });
@@ -395,12 +430,16 @@ export const checkServiceAvailability = async (req, res) => {
 
     let message = `Inquiry for ${service.name}`;
     if (packageId) {
-      const pkg = service.pricing_packages.find((p) => p._id.toString() === packageId);
+      const pkg = service.pricing_packages.find(
+        (p) => p._id.toString() === packageId
+      );
       message += `, Package: ${pkg?.name || "Unknown"}`;
     }
     if (quantity) message += `, Quantity: ${quantity}`;
     if (isRental && startDate && endDate) {
-      message += `, Rental from ${new Date(startDate).toLocaleDateString()} to ${new Date(endDate).toLocaleDateString()}`;
+      message += `, Rental from ${new Date(
+        startDate
+      ).toLocaleDateString()} to ${new Date(endDate).toLocaleDateString()}`;
     } else if (date) {
       message += `, Date: ${new Date(date).toLocaleDateString()}`;
     }
@@ -452,9 +491,9 @@ export const getTrendingSearches = async (req, res) => {
 export const getLocations = async (req, res) => {
   try {
     const cities = await Service.distinct("city", { status: "published" });
-    return res.status(200).json(
-      formatResponse(cities.filter((loc) => loc && loc.trim() !== ""))
-    );
+    return res
+      .status(200)
+      .json(formatResponse(cities.filter((loc) => loc && loc.trim() !== "")));
   } catch (error) {
     return handleError(res, error, "Get locations error");
   }
@@ -464,20 +503,21 @@ export const getCardsByType = async (req, res) => {
   try {
     const { type } = req.params;
     const { page = 1, limit = 10 } = req.query;
-    console.log(req.params,req.query);
-    
+    console.log(req.params, req.query);
+
     const skip = (page - 1) * parseInt(limit);
     const query = { status: "published" };
 
-    if (type && ["simple", "editable", "static", "non-editable"].includes(type)) {
+    if (
+      type &&
+      ["simple", "editable", "static", "non-editable"].includes(type)
+    ) {
       query.type = type;
     }
 
     const [total, cards] = await Promise.all([
       CardTemplate.countDocuments(query),
-      CardTemplate.find(query)
-        .skip(skip)
-        .limit(parseInt(limit)),
+      CardTemplate.find(query).skip(skip).limit(parseInt(limit)),
     ]);
 
     const formattedCards = cards.map(formatCard);
@@ -498,13 +538,16 @@ export const getCardDetails = async (req, res) => {
   try {
     const { id } = req.params;
     console.log(req.params);
-    
+
     if (!mongoose.Types.ObjectId.isValid(id)) {
       return res.status(400).json({ message: "Invalid card ID" });
     }
 
     const card = await CardTemplate.findById(id)
-      .populate("vendor_id", "phone vendorDetails.whatsapp_number full_name vendorDetails.brand_name")
+      .populate(
+        "vendor_id",
+        "phone vendorDetails.whatsapp_number full_name vendorDetails.brand_name"
+      )
       .lean();
 
     if (!card) {
@@ -521,15 +564,21 @@ export const getCardDetails = async (req, res) => {
 
     const avgRating =
       reviews.length > 0
-        ? (reviews.reduce((sum, r) => sum + r.stars, 0) / reviews.length).toFixed(1)
+        ? (
+            reviews.reduce((sum, r) => sum + r.stars, 0) / reviews.length
+          ).toFixed(1)
         : 0;
 
-    const vendorPhone = card.vendor_id?.vendorDetails?.whatsapp_number || card.vendor_id?.phone;
+    const vendorPhone =
+      card.vendor_id?.vendorDetails?.whatsapp_number || card.vendor_id?.phone;
 
     const cardData = {
       id: card._id,
       name: card.name || `${card.type} Card`, // Use name field
-      vendorName: card.vendor_id?.vendorDetails?.brand_name || card.vendor_id?.full_name || "Unknown Vendor",
+      vendorName:
+        card.vendor_id?.vendorDetails?.brand_name ||
+        card.vendor_id?.full_name ||
+        "Unknown Vendor",
       vendorId: card.vendor_id?._id,
       vendorPhone,
       pricePerCard: card.price_per_card,
@@ -564,8 +613,10 @@ export const editCardTemplate = async (req, res) => {
   try {
     const { id } = req.params;
     console.log(req.params);
-    
-    console.log(`Fetching card template for editing: ID=${id}, User=${req.user?._id}`);
+
+    console.log(
+      `Fetching card template for editing: ID=${id}, User=${req.user?._id}`
+    );
 
     if (!mongoose.Types.ObjectId.isValid(id)) {
       console.error(`Invalid card ID format: ${id}`);
@@ -579,13 +630,19 @@ export const editCardTemplate = async (req, res) => {
     }
 
     if (card.status !== "published") {
-      console.error(`Card template not published: ID=${id}, Status=${card.status}`);
-      return res.status(403).json({ message: "Card template is not published" });
+      console.error(
+        `Card template not published: ID=${id}, Status=${card.status}`
+      );
+      return res
+        .status(403)
+        .json({ message: "Card template is not published" });
     }
 
     if (card.type !== "editable") {
       console.error(`Card is not editable: ID=${id}, Type=${card.type}`);
-      return res.status(400).json({ message: "Only editable card templates can be edited" });
+      return res
+        .status(400)
+        .json({ message: "Only editable card templates can be edited" });
     }
 
     let settings = card.settings;
@@ -594,14 +651,20 @@ export const editCardTemplate = async (req, res) => {
         settings = JSON.parse(settings);
         console.log(`Parsed card settings: ID=${id}`);
       } catch (error) {
-        console.error(`Error parsing card settings: ID=${id}, Error=${error.message}`);
-        return res.status(400).json({ message: "Invalid card settings format" });
+        console.error(
+          `Error parsing card settings: ID=${id}, Error=${error.message}`
+        );
+        return res
+          .status(400)
+          .json({ message: "Invalid card settings format" });
       }
     }
 
     if (!settings.canvasJSON) {
       console.error(`Card settings missing canvasJSON: ID=${id}`);
-      return res.status(400).json({ message: "Card settings missing canvasJSON" });
+      return res
+        .status(400)
+        .json({ message: "Card settings missing canvasJSON" });
     }
 
     console.log(`Successfully fetched editable card template: ID=${id}`);
@@ -618,7 +681,9 @@ export const editCardTemplate = async (req, res) => {
       })
     );
   } catch (error) {
-    console.error(`Edit card template error: ID=${req.params.id}, Error=${error.message}`);
+    console.error(
+      `Edit card template error: ID=${req.params.id}, Error=${error.message}`
+    );
     return handleError(res, error, "Edit card template error");
   }
 };
@@ -627,7 +692,7 @@ export const submitContactInquiry = async (req, res) => {
   try {
     const { name, phone, message } = req.body;
     console.log(req.body);
-    
+
     // Validate fields
     if (!name || !phone || !message) {
       return res.status(400).json({ message: "All fields are required" });
@@ -636,35 +701,48 @@ export const submitContactInquiry = async (req, res) => {
     // Validate name (letters, spaces, hyphens only, min 2 characters)
     const nameRegex = /^[a-zA-Z\s-]{2,}$/;
     if (!nameRegex.test(name.trim())) {
-      return res.status(400).json({ message: "Name must be at least 2 characters and contain only letters, spaces, or hyphens" });
+      return res
+        .status(400)
+        .json({
+          message:
+            "Name must be at least 2 characters and contain only letters, spaces, or hyphens",
+        });
     }
 
-    // Normalize and validate phone number
-    const normalizedPhone = phone.replace(/\s/g, "").replace(/^0/, "+92");
-    const phoneRegex = /^\+92[0-9]{10}$/;
+    // Normalize and validate phone number (Indian format)
+    const normalizedPhone = phone.replace(/\s/g, "").replace(/^0/, "+91");
+    const phoneRegex = /^\+91[0-9]{10}$/;
+
     if (!phoneRegex.test(normalizedPhone)) {
-      return res.status(400).json({ message: "Invalid phone number format. Use +923xxxxxxxxx" });
+      return res
+        .status(400)
+        .json({ message: "Invalid phone number format. Use +91xxxxxxxxxx" });
     }
 
     // Validate message length
     const trimmedMessage = message.trim();
     if (trimmedMessage.length < 10) {
-      return res.status(400).json({ message: "Message must be at least 10 characters long" });
+      return res
+        .status(400)
+        .json({ message: "Message must be at least 10 characters long" });
     }
     if (trimmedMessage.length > 500) {
-      return res.status(400).json({ message: "Message cannot exceed 500 characters" });
+      return res
+        .status(400)
+        .json({ message: "Message cannot exceed 500 characters" });
     }
 
     // Check rate limit (1 message per phone number per week)
-    const ONE_WEEK_MS = 7 * 24 * 60 * 60 * 1000;
+    const ONE_WEEK_MS = 7 * 24 * 60 * 60 * 1000; 
     const lastMessage = await ContactMessage.findOne({
       phone: normalizedPhone,
       submittedAt: { $gte: new Date(Date.now() - ONE_WEEK_MS) },
     });
 
     if (lastMessage) {
-      return res.status(429).json({ 
-        message: "You have already submitted a message. Please wait 7 days before submitting another." 
+      return res.status(429).json({
+        message:
+          "You have already submitted a message. Please wait 7 days before submitting another.",
       });
     }
 
@@ -677,7 +755,10 @@ export const submitContactInquiry = async (req, res) => {
     await contactMessage.save();
 
     // Send OTP (simulating message delivery to admin)
-    await sendOTP(normalizedPhone, `Contact Inquiry from ${name.trim()}: ${trimmedMessage}`);
+    await sendOTP(
+      normalizedPhone,
+      `Contact Inquiry from ${name.trim()}: ${trimmedMessage}`
+    );
 
     return res.status(200).json({ message: "Inquiry submitted successfully" });
   } catch (error) {
@@ -718,7 +799,7 @@ export const chatbotQuery = async (req, res) => {
   try {
     const { query } = req.body;
     console.log(req.body);
-    
+
     if (!query) {
       return res.status(400).json({ message: "Query is required" });
     }
@@ -735,8 +816,8 @@ export const checkCardAvailability = async (req, res) => {
   try {
     const { id } = req.params;
     const { date, quantity = 1 } = req.body;
-     console.log(req.params,req.body);
-     
+    console.log(req.params, req.body);
+
     if (!mongoose.Types.ObjectId.isValid(id)) {
       return res.status(400).json({ message: "Invalid card ID" });
     }
@@ -757,20 +838,29 @@ export const checkCardAvailability = async (req, res) => {
     }
 
     if (card.status !== "published") {
-      return res.status(403).json({ message: "Card template is not published" });
+      return res
+        .status(403)
+        .json({ message: "Card template is not published" });
     }
 
     if (card.quantity_available < quantity) {
-      return res.status(400).json({ message: "Insufficient quantity available" });
+      return res
+        .status(400)
+        .json({ message: "Insufficient quantity available" });
     }
 
-    const vendorPhone = card.vendor_id?.vendorDetails?.whatsapp_number || card.vendor_id?.phone;
+    const vendorPhone =
+      card.vendor_id?.vendorDetails?.whatsapp_number || card.vendor_id?.phone;
 
     if (!vendorPhone) {
       return res.status(400).json({ message: "Vendor contact not available" });
     }
 
-    const message = `Inquiry for ${card.description?.substring(0, 20) || `${card.type} Card`}, Quantity: ${quantity}, Delivery Date: ${new Date(date).toLocaleDateString()}`;
+    const message = `Inquiry for ${
+      card.description?.substring(0, 20) || `${card.type} Card`
+    }, Quantity: ${quantity}, Delivery Date: ${new Date(
+      date
+    ).toLocaleDateString()}`;
 
     const whatsappLink = generateWhatsAppLink(vendorPhone, message);
     return res.status(200).json({ whatsappLink });

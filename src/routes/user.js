@@ -7,6 +7,7 @@ import {
   registerVendor,
   verifyVendorOtp,
 } from "../controllers/userController.js"
+
 import { normalizeVendorRequest } from "../middleware/vendorNormalizer.js"
 import { verifyToken, userCheck } from "../middleware/auth.js"
 import User from "../models/User.js"

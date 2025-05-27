@@ -39,7 +39,11 @@ async function startServer() {
     app.use(helmet());
     app.use(limiter);
     app.use(cors({ origin: FRONTEND_URL, credentials: true }));
-    app.use(express.json());
+    app.use(express.json(
+      {
+        limit:"10mb"
+      }
+    ));
     app.use(express.urlencoded({ extended: true }));
     app.use(cookieParser());
     app.use(fileUpload({ limits: { fileSize: 5 * 1024 * 1024 }, abortOnLimit: true }));

@@ -15,7 +15,6 @@ export const signIn = async (req, res) => {
 
   if (!phone) return res.status(400).json({ message: "Phone is required" });
   if (!/^\+91[6-9][0-9]{9}$/.test(phone))
-
     return res.status(400).json({ message: "Invalid Indian phone number" });
 
   try {
@@ -118,8 +117,8 @@ export const verifySignInOtp = async (req, res) => {
 
 export const signUp = async (req, res) => {
   const { full_name, phone } = req.body;
-  // console.log(req.body);
-// console.log(signUp);
+  console.log(req.body);
+  console.log(signUp);
 
   if (!full_name || !phone)
     return res
@@ -127,23 +126,17 @@ export const signUp = async (req, res) => {
       .json({ message: "Full name and phone are required" });
   if (!/^\+91[6-9][0-9]{9}$/.test(phone))
     return res.status(400).json({ message: "Invalid Indian  phone number" });
-  
-  console.log("phase1",phone,full_name);
-  
+
   try {
     const existingUser = await User.findOne({ phone });
-    if (existingUser){
-        return res.status(400).json({ message: "Phone already registered" });
-    }
-    
+    if (existingUser)
+      return res.status(400).json({ message: "Phone already registered" });
 
     const otpRecord = await OTP.findOne({ phone, role: "user" });
-    console.log("phase2",otpRecord);
-
-    
+    console.log(otpRecord);
 
     const now = new Date();
-    if (otpRecord && otpRecord.requestCount >= 7) {
+    if (otpRecord && otpRecord.requestCount >= 5) {
       const cooldownEnd = new Date(
         otpRecord.lastRequestTime.getTime() + 15 * 60 * 1000
       );
@@ -182,7 +175,7 @@ export const signUp = async (req, res) => {
 
 export const verifySignUpOtp = async (req, res) => {
   const { full_name, phone, otp } = req.body;
-  // console.log(req.body);
+  console.log(req.body);
 
   if (!full_name || !phone || !otp)
     return res
@@ -396,7 +389,7 @@ export const verifyVendorOtp = async (req, res) => {
       // Map hyphenated/lowercase values to properly formatted enum values
       const categoryMap = {
         "wedding-venues": "Wedding Venues",
-        "photographers": "Photographers",
+        photographers: "Photographers",
         "bridal-makeup": "Bridal Makeup",
         "henna-artists": "Henna Artists",
         "bridal-wear": "Bridal Wear",
